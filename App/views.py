@@ -13,7 +13,6 @@ class NearestServiceAPI(APIView):
         lng = request.data.get('lng')
         service_type = request.data.get('service_type')
         
-        # User location as a GEOS Point
         user_location = Point(float(lng), float(lat), srid=4326)
 
         
@@ -22,7 +21,7 @@ class NearestServiceAPI(APIView):
             service_location__dwithin=(user_location, 5000) 
         ).annotate(
             distance=Distance('service_location', user_location)
-        ).order_by('distance')[:20]  # Limit to top 20 nearest for performance
+        ).order_by('distance')[:20] 
 
         serializer = ServicesSerializer(nearest_services, many=True)
         return Response(serializer.data)
