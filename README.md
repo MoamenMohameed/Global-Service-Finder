@@ -6,38 +6,46 @@
 ![PostGIS](https://img.shields.io/badge/PostGIS-Spatial--DB-blue)
 ![OSM](https://img.shields.io/badge/OpenStreetMap-Data-orange)
 
-نظام معلومات جغرافي (**GIS**) متطور مبني باستخدام **GeoDjango** و **PostGIS**. يعتمد التطبيق على بيانات **OpenStreetMap (OSM)** الضخمة لتحديد الخدمات القريبة (مستشفيات، مدارس، مطاعم) وعرضها على خريطة قمر صناعي هجينة مع توفير ميزة حساب المسارات.
+A high-performance **Geographic Information System (GIS)** built with **GeoDjango** and **PostGIS**. This application leverages massive datasets from **OpenStreetMap (OSM)** to help users locate critical services (Hospitals, Schools, Police Stations) within a specific radius, visualized on a high-resolution hybrid satellite map.
 
 ---
 
-## 🚀 المميزات الرئيسية (Core Features)
+## 🌟 Key Features
 
-- **OSM Integration:** معالجة واستيراد ملايين النقاط الجغرافية (POIs) من ملفات PBF.
-- **Spatial Searching:** البحث الذكي في نطاق 5 كم باستخدام دوال PostGIS المكانية.
-- **Satellite Hybrid Map:** عرض صور الأقمار الصناعية من Esri مع طبقة أسماء الشوارع الشفافة لسهولة التوجيه.
-- **One-Click Routing:** حساب مسارات القيادة فورياً بين موقع المستخدم والمرفق المختار.
-- **Responsive Sidebar:** قائمة جانبية تفاعلية تعرض النتائج مرتبة حسب المسافة.
+- **Massive Data Integration:** Processes and queries millions of Points of Interest (POIs) directly from OSM PBF files.
+- **Spatial Query Engine:** Real-time search within a 5km radius using PostGIS spatial indexing.
+- **Hybrid Satellite View:** High-fidelity imagery from Esri World Imagery combined with CartoDB transparent labels for street-level context.
+- **Interactive Routing:** Integrated **Leaflet Routing Machine** for instant turn-by-turn navigation from the user's location to the selected service.
+- **Dynamic Sidebar:** A real-time updated list of services sorted by physical distance.
 
 ---
 
-## 🛠️ البنية التقنية (Tech Stack)
+## 🛠️ Technical Architecture
 
-| الطبقة | التقنية المستخدمة |
+The system follows a modern GIS pipeline, moving data from raw OpenStreetMap formats into a queryable spatial database.
+
+
+
+| Layer | Technology |
 | :--- | :--- |
-| **Backend** | Python / Django / GeoDjango |
-| **Database** | PostgreSQL + PostGIS |
-| **Frontend** | Leaflet.js / Leaflet Routing Machine |
-| **Data Pipeline** | osm2pgsql (لتحويل بيانات PBF إلى SQL) |
-| **Map Source** | Esri World Imagery / CartoDB Labels |
+| **Data Source** | OpenStreetMap (OSM) - `.pbf` format |
+| **ETL Tool** | `osm2pgsql` (OpenStreetMap to PostGIS converter) |
+| **Spatial Database** | PostgreSQL + PostGIS Extension |
+| **Backend** | Python / Django / GeoDjango / DRF |
+| **Frontend** | Leaflet.js / Leaflet-Routing-Machine |
+| **Map Tiles** | Esri (Satellite) & CartoDB (Labels) |
 
 ---
 
-## ⚙️ إعداد نظام البيانات (Data Pipeline Setup)
+## ⚙️ Data Pipeline & ETL Process
 
-يعتمد هذا المشروع على سحب البيانات من ملفات **OpenStreetMap PBF**.
+This project distinguishes itself by using professional-grade data handling. Instead of manual data entry, we sync directly with the global OSM database.
 
-### 1. استيراد البيانات باستخدام `osm2pgsql`
-بعد تحميل ملف المنطقة المطلوبة (مثلاً من Geofabrik)، قم بتنفيذ الأمر التالي لاستيراد البيانات إلى قاعدة بيانات PostGIS:
+### 1. Data Acquisition
+Download the desired region's `.osm.pbf` file from providers like [Geofabrik](https://download.geofabrik.de/).
+
+### 2. Importing with `osm2pgsql`
+The data is converted into spatial SQL tables using the `osm2pgsql` tool. This creates optimized tables (`planet_osm_point`, `planet_osm_line`, etc.) with built-in **GIST Spatial Indexes**.
 
 ```bash
-osm2pgsql -d your_db_name -U your_user -H localhost --slim --hstore map_data.osm.pbf
+osm2pgsql -d your_db_name -U your_postgres_user -H localhost --slim --hstore map_data.osm.pbf
