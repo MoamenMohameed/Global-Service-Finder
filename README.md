@@ -1,6 +1,6 @@
 # 🛰️ Satellite Service Finder (Pro Edition)
 
-![License](https://img.shields.io/https://github.com/MoamenMohameed/Global-Service-Finder)
+![License](https://img.shields.io/github/license/username/repo)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 ![Django](https://img.shields.io/badge/django-4.2+-green.svg)
 ![PostGIS](https://img.shields.io/badge/PostGIS-Spatial--DB-blue)
