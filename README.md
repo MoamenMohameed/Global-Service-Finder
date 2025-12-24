@@ -1,4 +1,4 @@
-# 🛰️ Satellite Service Finder (Pro Edition)
+# 🛰️ Satellite Service Finder
 
 ![License](https://img.shields.io/github/license/username/repo)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
