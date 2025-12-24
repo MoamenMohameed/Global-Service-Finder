@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-# 🛰️ Satellite Service Finder
-=======
 # 🛰️ Satellite Service Finder 
->>>>>>> c0e7b50 (intial commit)
 
 ![License](https://img.shields.io/github/license/username/repo)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
