@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satellite Service Finder | Pro Edition</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #1a73e8;
+            --success-color: #34a853;
+            --bg-light: #f8f9fa;
+        }
+
+        body { margin: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; color: #3c4043; }
+        
+        header { 
+            background: white; color: var(--primary-color); padding: 12px 20px; 
+            display: flex; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            z-index: 1000; font-size: 20px; font-weight: 500;
+        }
+
+        #main-container { display: flex; flex: 1; overflow: hidden; }
+        
+        #sidebar { 
+            width: 380px; padding: 20px; border-right: 1px solid #dadce0; 
+            background: white; overflow-y: auto; z-index: 900;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+
+        #map { flex: 1; background: #000; } 
+
+        .search-box { margin-bottom: 20px; }
+        
+        select, #getLocationBtn { 
+            width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; 
+            border: 1px solid #dadce0; font-size: 15px; outline: none;
+        }
+
+        #getLocationBtn { 
+            background: var(--primary-color); color: white; border: none; 
+            cursor: pointer; font-weight: 500; display: flex; align-items: center; justify-content: center;
+        }
+
+        .service-item { 
+            background: white; padding: 16px; margin-bottom: 12px; border-radius: 8px; 
+            border: 1px solid #dadce0; cursor: pointer; transition: all 0.3s;
+        }
+        .service-item:hover { background: #f1f3f4; border-color: var(--primary-color); }
+        
+        .dist-tag { 
+            display: inline-block; background: #e6f4ea; color: var(--success-color); 
+            padding: 4px 8px; border-radius: 4px; font-size: 13px; font-weight: 500;
+        }
+
+        .route-btn { 
+            background: var(--success-color); color: white; border: none; padding: 10px; 
+            width: 100%; border-radius: 6px; cursor: pointer; margin-top: 12px; font-weight: 500;
+        }
+
+        .leaflet-routing-container { 
+            background: white; padding: 15px; border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.15) !important;
+            width: 280px !important; max-height: 300px; overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<header>📍 Satellite Service Finder</header>
+
+<div id="main-container">
+    <div id="sidebar">
+        <div class="search-box">
+            <button id="getLocationBtn">🎯 My Current Location</button>
+            <label style="font-size: 11px; color: #70757a; margin-bottom: 5px; display: block;">SEARCH CATEGORY</label>
+            <select id="serviceType">
+                <option value="hospital">🏥 Hospitals</option>
+                <option value="school">🏫 Schools</option>
+                <option value="restaurant">🍴 Restaurants</option>
+                <option value="police">👮 Police Stations</option>
+            </select>
+        </div>
+        <div id="servicesList">
+            <p style="color: #70757a; font-size: 14px;">Explore services in Satellite view within 5km.</p>
+        </div>
+    </div>
+    <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+<script>
+    const map = L.map('map', { zoomControl: false }).setView([31.2357, 30.0444], 13);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+ 
+    const satelliteBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    }).addTo(map);
+
+    
+    const labelsTop = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+        pane: 'markerPane', 
+        pointerEvents: 'none'
+    }).addTo(map);
+
+    let markers = [];
+    let userMarker = null;
+    let searchCircle = null;
+    let routingControl = null;
+    let userCoords = null;
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    document.getElementById('serviceType').onchange = function() {
+        if (userCoords) findServices(userCoords.lat, userCoords.lng);
+    };
+
+    function findServices(lat, lng) {
+        userCoords = { lat, lng };
+        const type = document.getElementById('serviceType').value;
+        const listDiv = document.getElementById('servicesList');
+        listDiv.innerHTML = '<div style="text-align:center; padding:20px;">Searching...</div>';
+
+        fetch('/api/nearest-service/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ lat, lng, service_type: type })
+        })
+        .then(res => res.json())
+        .then(data => {
+            const features = data.features;
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            listDiv.innerHTML = '';
+
+            if(features.length === 0) {
+                listDiv.innerHTML = '<p style="text-align:center; color:#999;">No results in this 5km zone.</p>';
+                return;
+            }
+
+            features.forEach(feature => {
+                const props = feature.properties;
+                const [sLng, sLat] = feature.geometry.coordinates;
+                const name = props.service || "Location";
+                const dist = Math.round(props.distance).toLocaleString();
+
+                // ماركر بلون أحمر ليبرز فوق القمر الصناعي
+                const marker = L.marker([sLat, sLng]).addTo(map);
+                marker.bindPopup(`
+                    <div style="text-align:center;">
+                        <strong>${name}</strong><br>${dist} m<br>
+                        <button class="route-btn" onclick="getDirections(${sLat}, ${sLng})">Directions</button>
+                    </div>
+                `);
+                markers.push(marker);
+
+                const div = document.createElement('div');
+                div.className = 'service-item';
+                div.innerHTML = `<strong>${name}</strong><span class="dist-tag">${dist} m</span>`;
+                div.onclick = () => { map.flyTo([sLat, sLng], 17); marker.openPopup(); };
+                listDiv.appendChild(div);
+            });
+        });
+    }
+
+    function getDirections(destLat, destLon) {
+        if (!userCoords) return;
+        if (routingControl) map.removeControl(routingControl);
+        routingControl = L.Routing.control({
+            waypoints: [L.latLng(userCoords.lat, userCoords.lng), L.latLng(destLat, destLon)],
+            lineOptions: { styles: [{ color: '#00ccff', weight: 6, opacity: 0.9 }] },
+            createMarker: () => null
+        }).addTo(map);
+    }
+
+    function updateUserLocation(lat, lng) {
+        userCoords = { lat, lng };
+        if (userMarker) map.removeLayer(userMarker);
+        if (searchCircle) map.removeLayer(searchCircle);
+        if (routingControl) map.removeControl(routingControl);
+
+        userMarker = L.marker([lat, lng]).addTo(map).bindPopup("Your Location").openPopup();
+        
+        
+        searchCircle = L.circle([lat, lng], {
+            radius: 5000, color: '#ffffff', weight: 2, fillOpacity: 0.1, dashArray: '5, 10'
+        }).addTo(map);
+
+        map.flyTo([lat, lng], 13);
+        findServices(lat, lng);
+    }
+
+    map.on('click', e => updateUserLocation(e.latlng.lat, e.latlng.lng));
+
+    document.getElementById('getLocationBtn').onclick = () => {
+        navigator.geolocation.getCurrentPosition(pos => {
+            updateUserLocation(pos.coords.latitude, pos.coords.longitude);
+        });
+    };
+</script>
+</body>
+</html>
